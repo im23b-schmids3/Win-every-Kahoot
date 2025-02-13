@@ -24,5 +24,6 @@ selbst auswählen können.
 
 # Autor
 
-**[im23b-schmids3](https://github.com/im23b-schmids3)**
+**[im23b-schmids3](https://github.com/im23b-schmids3)** <br>
+Feedback oder Vorschläge? Öffne ein Issue oder erstelle einen Pull-Request!
 
