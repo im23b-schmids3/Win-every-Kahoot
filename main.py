@@ -1,77 +1,49 @@
-import easyocr
-from PIL import ImageGrab
-import pygetwindow
 import os
-from dotenv import load_dotenv
 import groq
+import keyboard
+import requests
+from PIL import ImageGrab
+from dotenv import load_dotenv
 
-# Load API key from .env file
+
+def take_screenshots():
+    ImageGrab.grab(bbox=(50, 1100, 2620, 1400)).save("question.png")  # Fragebereich
+    ImageGrab.grab(bbox=(25, 1400, 2620, 1700)).save("answers.png")  # Antwortenbereich
+
+
+def ocr_with_space(image_path):
+    response = requests.post(
+        "https://api.ocr.space/parse/image",
+        headers={"apikey": os.getenv("SPACE_API_KEY")},
+        files={"file": open(image_path, "rb")},
+        data={"language": "ger", "isOverlayRequired": False}
+    ).json()
+
+    return response.get("ParsedResults", [{}])[0].get("ParsedText", "").strip()
+
+
 load_dotenv()
-groq_api_key = os.getenv("GROQ_API_KEY")
+client = groq.Client(api_key=os.getenv("GROQ_API_KEY"))
 
-# Initialize Groq client
-client = groq.Client(api_key=groq_api_key)
+print("Programm läuft... Drücke STRG + ALT + O, um einen Screenshot zu machen.")
 
-# Get Kahoot window
-Kahoot_window = pygetwindow.getWindowsWithTitle("Google Chrome")
-if Kahoot_window:
-    kahoot = Kahoot_window[0]
-    kahoot.activate()
+while True:
+    keyboard.wait("ctrl+alt+o")
+    take_screenshots()
 
-# Define screenshot areas
-question_box = (25, 250, 2800, 400)  # Question area
-answer1_box = (25, 1200, 1200, 1500)  # Answer 1
-answer2_box = (1150, 1200, 2420, 1500)  # Answer 2
-answer3_box = (25, 1600, 1210, 1800)  # Answer 3
-answer4_box = (1150, 1600, 2420, 1800)  # Answer 4
+    question = ocr_with_space("question.png")
+    answers = ocr_with_space("answers.png")
 
-# Take screenshots
-ImageGrab.grab(bbox=question_box).save("question.png")
-ImageGrab.grab(bbox=answer1_box).save("answer1.png")
-ImageGrab.grab(bbox=answer2_box).save("answer2.png")
-ImageGrab.grab(bbox=answer3_box).save("answer3.png")
-ImageGrab.grab(bbox=answer4_box).save("answer4.png")
+    print(f"\nErkannte Frage: {question}")
+    print(f"Erkannte Antworten: {answers}")
 
-# Initialize EasyOCR
-reader = easyocr.Reader(['en', 'de', 'fr'])
-
-# OCR Processing
-images = ["question.png", "answer1.png", "answer2.png", "answer3.png", "answer4.png"]
-labels = ["Question", "Answer 1", "Answer 2", "Answer 3", "Answer 4"]
-
-extracted_text = {}
-
-for img, label in zip(images, labels):
-    result = reader.readtext(img)
-    text_content = " ".join([text for (_, text, _) in result])
-    extracted_text[label] = text_content
-    print(f"\n{label}: {text_content}")
-
-# Ensure all text is extracted
-if "Question" in extracted_text and all(f"Answer {i}" in extracted_text for i in range(1, 5)):
-    question = extracted_text["Question"]
-    answers = [extracted_text[f"Answer {i}"] for i in range(1, 5)]
-
-    # Format the prompt for Groq AI
-    prompt = f"""
-    You are playing Kahoot. The question is: "{question}".
-    The possible answers are:
-    1. {answers[0]}
-    2. {answers[1]}
-    3. {answers[2]}
-    4. {answers[3]}
-
-    Which answer is most likely correct? Respond with ONLY the answer number (1-4).
-    """
-
-    response = client.chat.completions.create(
-        model="mixtral-8x7b-32768",
-        messages=[{"role": "user", "content": prompt}],
-        max_tokens=50
-    )
-
-    # Extract AI response
-    ai_response = response.choices[0].message.content.strip()
-    print(f"\n Best Answer: {ai_response}")
-else:
-    print("\n Error: Could not extract question or answers properly.")
+    if question and answers:
+        response = client.chat.completions.create(
+            model="mixtral-8x7b-32768",
+            messages=[{"role": "user",
+                       "content": f'You are playing Kahoot. The question is: "{question}". The possible answers are: {answers}. Respond with ONLY the correct answer and DON’T explain anything.'}],
+            max_tokens=50
+        )
+        print(f"\nRichtige Antwort: {response.choices[0].message.content.strip()}")
+    else:
+        print("\nFehler: Frage oder Antworten konnten nicht extrahiert werden.")
