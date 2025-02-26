@@ -1,13 +1,14 @@
 import os
 import groq
 import keyboard
+import pyautogui
 import requests
 from PIL import ImageGrab
 from dotenv import load_dotenv
 
 
 def take_screenshots():
-    ImageGrab.grab(bbox=(50, 1100, 2620, 1700)).save("screenshot.png")  # Bereich des Screenshots
+    ImageGrab.grab(bbox=(50, 1200, 2650, 1680)).save("screenshot.png")  # Bereich des Screenshots
 
 
 def ocr_with_space(image_path):
@@ -32,16 +33,81 @@ while True:
 
     screenshot = ocr_with_space("screenshot.png")
 
-    print(f"\nErkannte Texte: "
-          f"{screenshot}")
+    print(f"\nErkannte Texte: {screenshot}")
 
     if screenshot:
-        response = client.chat.completions.create(
-            model="mixtral-8x7b-32768",
-            messages=[{"role": "user",
-                       "content": f'You are playing Kahoot. You get a Screenshot: {screenshot} The question is probably in the upper part and Answers can be around 2-4. Respond with ONLY the correct answer and DON’T explain anything.'}],
-            max_tokens=50
-        )
-        print(f"\nRichtige Antwort: {response.choices[0].message.content.strip()}")
+        lines = screenshot.split("\n")
+
+        frage = None
+        antwort1 = antwort2 = antwort3 = antwort4 = None
+        wahr = falsch = None
+        response = None
+
+        if len(lines) >= 5:  # Mindestens eine Frage + 3 Antworten
+            frage = lines[0]
+            antwort1, antwort2, antwort3, antwort4 = lines[1:5]
+
+            print(f"\nFrage: {frage}")
+            print(f"Antwort 1: {antwort1}")
+            print(f"Antwort 2: {antwort2}")
+            print(f"Antwort 3: {antwort3}")
+            print(f"Antwort 4: {antwort4}")
+
+            response = client.chat.completions.create(
+                model="mixtral-8x7b-32768",
+                messages=[{"role": "user",
+                           "content": f'You are playing Kahoot. The question is: "{frage}". The possible answers are: '
+                                      f'{antwort1}, {antwort2}, {antwort3}, {antwort4}. If there is no . or " etc. then DONT use it'
+                                      f'You are ONLY ALLOWED to Respond with the correct answer and DON’T explain anything.'}],
+                max_tokens=50
+            )
+
+        elif len(lines) == 3:  # Eine Frage + 2 Antworten (Wahr/Falsch)
+            frage = lines[0]
+            wahr = lines[1]
+            falsch = lines[2]
+
+            print(f"\nFrage: {frage}")
+            print(f"Wahr: {wahr}")
+            print(f"Falsch: {falsch}")
+
+            response = client.chat.completions.create(
+                model="mixtral-8x7b-32768",
+                messages=[{"role": "user",
+                           "content": f'You are playing Kahoot. The question is: "{frage}". '
+                                      f'The possible answers are: "{wahr}" (True) and "{falsch}" (False). '
+                                      f'You are ONLY ALLOWED to Respond with "{wahr}" or "{falsch}") DON’T explain anything!.'}],
+                max_tokens=50
+            )
+
+        else:
+            print("\nFehler: Nicht genug Zeilen erkannt.")
+
+
+        if response:
+            richtige_antwort = response.choices[0].message.content.strip().lower()
+            print(f"\nRichtige Antwort: {richtige_antwort}")
+
+        if antwort1 and richtige_antwort == antwort1.strip().lower():
+            pyautogui.moveTo(1100, 1420, duration=0.1)
+            pyautogui.click()
+        elif antwort2 and richtige_antwort == antwort2.strip().lower():
+            pyautogui.moveTo(1100, 1600, duration=0.1)
+            pyautogui.click()
+        elif antwort3 and richtige_antwort == antwort3.strip().lower():
+            pyautogui.moveTo(1900, 1420, duration=0.1)
+            pyautogui.click()
+        elif antwort4 and richtige_antwort == antwort4.strip().lower():
+            pyautogui.moveTo(1900, 1600, duration=0.1)
+            pyautogui.click()
+        elif wahr and richtige_antwort == wahr.strip().lower():
+            pyautogui.moveTo(1250, 1550, duration=0.1)
+            pyautogui.click()
+        elif falsch and richtige_antwort == falsch.strip().lower():
+            pyautogui.moveTo(1900, 1550, duration=0.1)
+            pyautogui.click()
+        else:
+            print("\nFehler: Keine Antwort von der KI erhalten.")
+
     else:
         print("\nFehler: Frage oder Antworten konnten nicht extrahiert werden.")
