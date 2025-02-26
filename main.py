@@ -7,8 +7,7 @@ from dotenv import load_dotenv
 
 
 def take_screenshots():
-    ImageGrab.grab(bbox=(50, 1100, 2620, 1400)).save("question.png")  # Fragebereich
-    ImageGrab.grab(bbox=(25, 1400, 2620, 1700)).save("answers.png")  # Antwortenbereich
+    ImageGrab.grab(bbox=(50, 1100, 2620, 1700)).save("screenshot.png")  # Bereich des Screenshots
 
 
 def ocr_with_space(image_path):
@@ -31,17 +30,16 @@ while True:
     keyboard.wait("ctrl+alt+o")
     take_screenshots()
 
-    question = ocr_with_space("question.png")
-    answers = ocr_with_space("answers.png")
+    screenshot = ocr_with_space("screenshot.png")
 
-    print(f"\nErkannte Frage: {question}")
-    print(f"Erkannte Antworten: {answers}")
+    print(f"\nErkannte Texte: "
+          f"{screenshot}")
 
-    if question and answers:
+    if screenshot:
         response = client.chat.completions.create(
             model="mixtral-8x7b-32768",
             messages=[{"role": "user",
-                       "content": f'You are playing Kahoot. The question is: "{question}". The possible answers are: {answers}. Respond with ONLY the correct answer and DON’T explain anything.'}],
+                       "content": f'You are playing Kahoot. You get a Screenshot: {screenshot} The question is probably in the upper part and Answers can be around 2-4. Respond with ONLY the correct answer and DON’T explain anything.'}],
             max_tokens=50
         )
         print(f"\nRichtige Antwort: {response.choices[0].message.content.strip()}")
