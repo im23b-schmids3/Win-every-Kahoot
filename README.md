@@ -16,13 +16,7 @@ analysiert und die wahrscheinlich beste Lösung zurückgibt. Diese wird dann aut
 # Python-Bibliotheken
 
 <ul> 
-<li> pip install torch torchvision </li>
-<li> pip install requests </li>
-<li> pip install keyboard </li>
-<li> pip install pyautogui </li>
-<li> pip install pillow </li>
-<li> pip install pygetwindow </li>
-<li> pip install openai </li>
+pip install -r requirements.txt
 </ul>
 
 # Hinweis

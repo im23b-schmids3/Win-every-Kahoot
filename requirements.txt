@@ -1,0 +1,8 @@
+torch
+torchvision
+requests
+keyboard
+pyautogui
+pillow
+pygetwindow
+openai
